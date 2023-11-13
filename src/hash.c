@@ -4,6 +4,7 @@
 #include "hash.h"
 
 #define FACTOR_CARGA_MAXIMO 0.7
+#define CAPACIDAD_MINIMA 3
 
 typedef struct nodo_hash {
 	const char *clave;
@@ -19,13 +20,11 @@ struct hash {
 
 size_t funcion_hash(const char *clave)
 {
-	size_t num = 0;
-
-	while (*clave) {
-		num += (size_t) * (clave++);
+	size_t clave_hash = 0;
+	for (int i = 0; clave[i] != '\0'; i++) {
+		clave_hash = 31 * clave_hash + (size_t)clave[i];
 	}
-
-	return num;
+	return clave_hash;
 }
 
 bool hash_actualizar_valor(hash_t *hash, const char *clave, void *valor,
@@ -66,11 +65,17 @@ nodo_hash_t *crear_nodo(const char *clave, void *valor)
 {
 	nodo_hash_t *nuevo = calloc(1, sizeof(nodo_hash_t));
 
-	if (nuevo == NULL) {
+	if (!nuevo) {
 		return NULL;
 	}
 
 	nuevo->clave = hash_duplicar_clave(clave);
+
+	if (!nuevo->clave) {
+		free(nuevo);
+		return NULL;
+	}
+
 	nuevo->valor = valor;
 
 	return nuevo;
@@ -80,7 +85,7 @@ void insertar_nodo(hash_t *hash, nodo_hash_t *nodo, size_t pos)
 {
 	nodo_hash_t *actual = hash->tabla[pos];
 
-	if (actual == NULL) {
+	if (!actual) {
 		hash->tabla[pos] = nodo;
 		return;
 	}
@@ -97,7 +102,7 @@ hash_t *rehashear(hash_t *hash, size_t nueva_capacidad)
 	hash_t nuevo_hash;
 
 	nuevo_hash.tabla = calloc(nueva_capacidad, sizeof(nodo_hash_t *));
-	if (nuevo_hash.tabla == NULL) {
+	if (!nuevo_hash.tabla) {
 		return NULL;
 	}
 	nuevo_hash.capacidad = nueva_capacidad;
@@ -157,8 +162,8 @@ hash_t *hash_crear(size_t capacidad)
 		return NULL;
 	}
 
-	if (capacidad < 3) {
-		capacidad = 3;
+	if (capacidad < CAPACIDAD_MINIMA) {
+		capacidad = CAPACIDAD_MINIMA;
 	}
 
 	hash->tabla = calloc(capacidad, sizeof(nodo_hash_t *));
@@ -179,18 +184,16 @@ hash_t *hash_insertar(hash_t *hash, const char *clave, void *elemento,
 		return NULL;
 	}
 
-	size_t posicion = funcion_hash(clave) % hash->capacidad;
-
-	if (hash_actualizar_valor(hash, clave, elemento, posicion, anterior) ==
-	    true) {
-		return hash;
-	}
-
 	if (hash->cantidad / hash->capacidad >= FACTOR_CARGA_MAXIMO) {
 		if (rehashear(hash, hash->capacidad * 2) == NULL) {
 			return NULL;
 		}
-		posicion = funcion_hash(clave) % hash->capacidad;
+	}
+
+	size_t posicion = funcion_hash(clave) % hash->capacidad;
+
+	if (hash_actualizar_valor(hash, clave, elemento, posicion, anterior)) {
+		return hash;
 	}
 
 	nodo_hash_t *nodo_a_insertar = crear_nodo(clave, elemento);
@@ -236,21 +239,11 @@ void *hash_obtener(hash_t *hash, const char *clave)
 
 bool hash_contiene(hash_t *hash, const char *clave)
 {
-	if (!hash || hash->cantidad == 0 || !clave)
+	if (!hash || hash->cantidad == 0 || !clave ||
+	    !hash_obtener(hash, clave))
 		return false;
 
-	size_t pos = funcion_hash(clave) % hash->capacidad;
-
-	nodo_hash_t *actual = hash->tabla[pos];
-
-	while (actual != NULL) {
-		if (strcmp(actual->clave, clave) == 0) {
-			return true;
-		}
-		actual = actual->siguiente;
-	}
-
-	return false;
+	return true;
 }
 
 size_t hash_cantidad(hash_t *hash)
@@ -287,7 +280,7 @@ void hash_destruir_todo(hash_t *hash, void (*destructor)(void *))
 		return;
 	}
 
-	if (destructor == NULL) {
+	if (!destructor) {
 		hash_destruir(hash);
 		return;
 	}

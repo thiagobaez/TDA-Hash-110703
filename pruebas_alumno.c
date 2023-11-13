@@ -305,7 +305,7 @@ void pruebas_iterador_interno()
 			cant == hash_cantidad(hash),
 		"Se prueba iterar un hash en su totalidad, devuelve la cantidad de elementos");
 	pa2m_afirmar(
-		hash_con_cada_clave(hash, buscar, &vector[9]) == 7,
+		hash_con_cada_clave(hash, buscar, &vector[9]) == 5,
 		"Se prueba iterar un hash deteniéndose antes de terminar de visitar todos los elementos");
 
 	hash_destruir(hash);
