@@ -31,28 +31,30 @@ Se implementaron dos estructuras:
 
 - struct hash: Contiene un puntero a una tabla de hash, un size_t con la capacidad del mismo y otro size_t con la cantidad de elementos presentes en el hash.
 
-- struct nodo_hash: Entre tantas opciones, se decidió implementar el hash abierto, almacenando las colisiones en nodos simplemente enlazados, guardando las colisiónes atrás del último nodo colisionado. Cada nodo contendrá un string con la clave, y un void* con el valor o elemento relacionado a la clave, y un puntero al nodo siguiente.
+- struct nodo_hash: Entre tantas opciones, se decidió implementar el hash abierto, almacenando las colisiones en nodos simplemente enlazados, guardando las colisiones atrás del último nodo colisionado. Cada nodo contendrá un string con la clave, y un void* con el valor o elemento relacionado a la clave, y un puntero al nodo siguiente.
 
 
-### hash_crear()
+### hash_crear() 
 
-Para el funcionamiento del Hash, se reserva un bloque de memoria contiguo en el Heap para la tabla de hash. La capacidad inicial de la tabla es introducida por el usuario. Si la capacidad es menor a 3, se creará una tabla con capacidad igual a 3.
+Para el funcionamiento del Hash, se reserva un bloque de memoria contiguo en el Heap para la tabla de hash. La capacidad inicial de la tabla es introducida por el usuario. Si la capacidad es menor a 3, se creará una tabla con capacidad igual a 3. Esta función es O(1).
 
 ![hash_crear](img/hash_crear.png)
 
 ### hash_insertar()
 
-Para insertar un par (clave,valor) en el hash, es necesario una función que transforme la clave en una posicion válida de la tabla, para asi poder almacenar dicho par en la posición indicada. La función que se utilizó, suma todos los caracteres de la clave. Para que esta cuenta de un número de posición válido en la tabla, se utiliza el operador `%`, que devuelve el resto de la división entera por la capacidad.
+Para insertar un par (clave,valor) en el hash, es necesario una función que transforme la clave en una posición válida de la tabla, para asi poder almacenar dicho par en la posición indicada. La función que se utilizó, suma todos los caracteres de la clave. Para que esta cuenta de un número de posición válido en la tabla, se utiliza el operador `%`, que devuelve el resto de la división entera por la capacidad. Esta función de hash es O(n), ya que depende de la cantidad de caracteres que el string contenga.
 
-En el caso de que la clave introducida ya exista dentro del hash, se busca el valor asocidado a esa clave y se lo reemplaza con el nuevo valor insertado. El valor anterior es almacenado en un puntero que el usuario pasa por referencia. (En caso de que el puntero sea NULL, se actualiza la clave sin almacenar el valor anterior).
+En el caso de que la clave introducida ya exista dentro del hash, se busca el valor asociado a esa clave y se lo reemplaza con el nuevo valor insertado. El valor anterior es almacenado en un puntero que el usuario pasa por referencia. (En caso de que el puntero sea NULL, se actualiza la clave sin almacenar el valor anterior).
 
 ![hash_crear](img/heap_actualizar_valor.png)
 
-Como el usuario especifica la capacidad del mismo a la hora de crear el hash, a medida que se van insertando pares de clave y valor, se comienzan a producir colisiónes. Al insertar, la función hash puede devolver una posicion donde ya se encuentra un par guardado, por lo que se almacenará detrás del mismo en la última posición. Para evitar que la tabla posea muchos más pares guardados que posiciónes libres, se implementó la funcion `rehash()`. Esta crea una nueva tabla, con el doble de capacidad que la tabla anterior, y reinserta todos los pares en las nuevas posiciónes correspondientes brindadas por la función hash. El rehash ocurrirá siempre que el factor de carga máximo supere 0.7, es decir, cuando dividir la cantidad de elementos por la capacidad sea mayor 0.7.
+Como el usuario especifica la capacidad del mismo a la hora de crear el hash, a medida que se van insertando pares de clave y valor, se comienzan a producir colisiones. Al insertar, la función hash puede devolver una posición donde ya se encuentra un par guardado, por lo que se almacenará detrás del mismo en la última posición. Para evitar que la tabla posea muchos más pares guardados que posiciones libres, se implementó la funcion `rehash()`. Esta crea una nueva tabla, con el doble de capacidad que la tabla anterior, y reinserta todos los pares en las nuevas posiciones correspondientes brindadas por la función hash. El rehash ocurrirá siempre que el factor de carga máximo supere 0.7, es decir, cuando dividir la cantidad de elementos por la capacidad sea mayor 0.7. Esta operación es O(n), ya que se tienen que mover todos los elementos contenidos en el hash a una nueva posición.
 
 ![hash_crear](img/hash_rehashear.png)
 
-Para la creación del nodo a insertar, se copia la clave en el heap, para así evitar que si el usuario cambia la clave en el stack, esta no se cambie en el heap y se pierda el acceso a esta. Luego se inserta en la posición correspondiente (si ya está ocupado, se almacena la colisión detrás de este).
+Para la creación del nodo a insertar, se copia la clave en el heap, para así evitar que si el usuario cambia la clave en el stack, esta no se cambie en el heap y se pierda el acceso a esta. Luego se inserta en la posición correspondiente (si ya está ocupado, se almacena la colisión detrás de este). 
+
+
 
 
 ### hash_quitar()
@@ -61,7 +63,7 @@ Esta función quita un par clave valor del hash. Busca en la tabla, en posición
 
 ### hash_obtener()
 
-Esta función devuelve el valor asociado a una clave que el usuario proporciona. Se hashea la clave y se busca en la posición indicada, en todos los nodos colisionados que pueda haber. En caso de encontrar la clave buscada, se retorna el valor asociado a esta. En caso de no encontrar la clave que el usuario introdució, se retorna NULL como señal de que esta clave no existe en el hash.
+Esta función devuelve el valor asociado a una clave que el usuario proporciona. Se hashea la clave y se busca en la posición indicada, en todos los nodos colisionados que pueda haber. En caso de encontrar la clave buscada, se retorna el valor asociado a esta. En caso de no encontrar la clave que el usuario introdujo, se retorna NULL como señal de que esta clave no existe en el hash. En el caso promedio, la complejidad de búsqueda es O(1), ya que la posición del elemento se determina directamente por la función hash.
 
 
 ### hash_contiene()
@@ -78,8 +80,8 @@ Destruye el hash liberando la memoria reservada.
 
 ### hash_con_cada_clave()
 
-Recorre cada una de las claves almacenadas en la tabla de hash e invoca a la función f, pasandole como parámetros la clave, el valor asociado a la clave y el puntero auxiliar.
-Mientras que queden mas claves o la funcion retorne true, la iteración continúa. Cuando no quedan mas claves o la función devuelve false, la iteración se corta y la función principal retorna. Devuelve la cantidad de claves totales iteradas (la cantidad de veces que fue invocada la función) o 0 en caso de error.
+Recorre cada una de las claves almacenadas en la tabla de hash e invoca a la función f, pasándole como parámetros la clave, el valor asociado a la clave y el puntero auxiliar.
+Mientras que queden más claves o la función retorne true, la iteración continúa. Cuando no quedan más claves o la función devuelve false, la iteración se corta y la función principal retorna. Devuelve la cantidad de claves totales iteradas (la cantidad de veces que fue invocada la función) o 0 en caso de error.
 
 ---
 
